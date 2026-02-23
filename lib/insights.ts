@@ -17,9 +17,9 @@ export interface Insight {
   value?: string;
 }
 
-interface Transaction {
+interface InsightTransaction {
   id: string;
-  amount: number;
+  amount: any; // Using any to handle both number and Prisma Decimal
   category: string;
   date: string | Date;
   merchant: string;
@@ -40,7 +40,7 @@ const fmt = (n: number) =>
 const fcat = (s: string) =>
   (s || "other").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-function currentMonthTxns(txns: Transaction[]): Transaction[] {
+function currentMonthTxns(txns: InsightTransaction[]): InsightTransaction[] {
   const now = new Date();
   return txns.filter((t) => {
     const d = new Date(t.date);
@@ -48,7 +48,7 @@ function currentMonthTxns(txns: Transaction[]): Transaction[] {
   });
 }
 
-function lastMonthTxns(txns: Transaction[]): Transaction[] {
+function lastMonthTxns(txns: InsightTransaction[]): InsightTransaction[] {
   const now = new Date();
   const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   return txns.filter((t) => {
@@ -57,7 +57,7 @@ function lastMonthTxns(txns: Transaction[]): Transaction[] {
   });
 }
 
-function groupByMerchant(txns: Transaction[]): Record<string, number[]> {
+function groupByMerchant(txns: InsightTransaction[]): Record<string, number[]> {
   return txns.reduce((acc, t) => {
     acc[t.merchant] = acc[t.merchant] ?? [];
     acc[t.merchant].push(Number(t.amount));
@@ -65,7 +65,7 @@ function groupByMerchant(txns: Transaction[]): Record<string, number[]> {
   }, {} as Record<string, number[]>);
 }
 
-function groupByCategory(txns: Transaction[]): Record<string, number> {
+function groupByCategory(txns: InsightTransaction[]): Record<string, number> {
   return txns.reduce((acc, t) => {
     const amount = Number(t.amount);
     acc[t.category] = (acc[t.category] ?? 0) + amount;
@@ -80,7 +80,7 @@ function average(arr: number[]): number {
 // ─── individual detectors ────────────────────────────────────────────────────
 
 /** Flag any single transaction that is ≥ 2.5× the merchant's own average */
-function detectAnomalies(txns: Transaction[]): Insight[] {
+function detectAnomalies(txns: InsightTransaction[]): Insight[] {
   const insights: Insight[] = [];
   const byMerchant = groupByMerchant(txns);
 
@@ -101,7 +101,7 @@ function detectAnomalies(txns: Transaction[]): Insight[] {
 }
 
 /** Warn if any category this month is > 40 % of total spend */
-function detectOverspend(txns: Transaction[]): Insight[] {
+function detectOverspend(txns: InsightTransaction[]): Insight[] {
   const insights: Insight[] = [];
   const thisMonth = currentMonthTxns(txns);
   const totalSpent = thisMonth.reduce((s, t) => s + Number(t.amount), 0);
@@ -124,7 +124,7 @@ function detectOverspend(txns: Transaction[]): Insight[] {
 
 /** Warn if subscriptions exceed 20 % of this month's spend */
 function detectSubscriptionCreep(
-  txns: Transaction[],
+  txns: InsightTransaction[],
   subscriptions: Subscription[]
 ): Insight | null {
   if (!subscriptions.length) return null;
@@ -145,7 +145,7 @@ function detectSubscriptionCreep(
 }
 
 /** Month-over-month spend change */
-function detectMoMChange(txns: Transaction[]): Insight | null {
+function detectMoMChange(txns: InsightTransaction[]): Insight | null {
   const thisTotal = currentMonthTxns(txns).reduce((s, t) => s + Number(t.amount), 0);
   const lastTotal = lastMonthTxns(txns).reduce((s, t) => s + Number(t.amount), 0);
   if (!lastTotal || !thisTotal) return null;
@@ -163,7 +163,7 @@ function detectMoMChange(txns: Transaction[]): Insight | null {
 }
 
 /** Highlight top merchant this month */
-function topMerchantTip(txns: Transaction[]): Insight | null {
+function topMerchantTip(txns: InsightTransaction[]): Insight | null {
   const thisMonth = currentMonthTxns(txns);
   if (!thisMonth.length) return null;
   const byMerchant = groupByMerchant(thisMonth);
@@ -183,7 +183,7 @@ function topMerchantTip(txns: Transaction[]): Insight | null {
 }
 
 /** Burn-rate forecast */
-function forecastBurn(txns: Transaction[]): Insight | null {
+function forecastBurn(txns: InsightTransaction[]): Insight | null {
   const now = new Date();
   const daysPassed = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -209,7 +209,7 @@ function forecastBurn(txns: Transaction[]): Insight | null {
  * Safe-to-Spend: Calculates how much the user can spend daily after 
  * accounting for known bills and a 20% savings target.
  */
-function detectSafeToSpend(txns: Transaction[], subscriptions: Subscription[]): Insight | null {
+function detectSafeToSpend(txns: InsightTransaction[], subscriptions: Subscription[]): Insight | null {
   const now = new Date();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = daysInMonth - now.getDate() + 1;
@@ -251,7 +251,7 @@ const CARBON_MAP: Record<string, number> = {
 /** 
  * Carbon Credit: Estimates CO2 impact based on spending categories.
  */
-function detectCarbonImpact(txns: Transaction[]): Insight | null {
+function detectCarbonImpact(txns: InsightTransaction[]): Insight | null {
   const thisMonth = currentMonthTxns(txns);
   if (!thisMonth.length) return null;
 
@@ -277,7 +277,7 @@ function detectCarbonImpact(txns: Transaction[]): Insight | null {
 // ─── main export ──────────────────────────────────────────────────────────────
 
 export function generateInsights(
-  transactions: Transaction[],
+  transactions: any[],
   subscriptions: Subscription[] = []
 ): Insight[] {
   const insights: Insight[] = [
