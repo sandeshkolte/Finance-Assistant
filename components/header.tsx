@@ -2,6 +2,7 @@
 
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
+import { SignInButton, SignUpButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 
 export function Header() {
@@ -35,12 +36,21 @@ export function Header() {
 
         {/* Auth buttons */}
         <div className="hidden md:flex items-center gap-4">
-          <Button variant="ghost" className="text-white hover:bg-secondary/20">
-            Sign In
-          </Button>
-          <Button className="bg-cyan-500 hover:bg-cyan-600 text-background font-semibold rounded-lg">
-            Get Started
-          </Button>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button variant="ghost" className="text-white hover:bg-secondary/20">
+                Sign In
+              </Button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button className="bg-cyan-500 hover:bg-cyan-600 text-background font-semibold rounded-lg">
+                Get Started
+              </Button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
         </div>
 
         {/* Mobile menu button */}
@@ -73,12 +83,23 @@ export function Header() {
               Blog
             </a>
             <div className="pt-4 space-y-2 border-t border-secondary">
-              <Button variant="ghost" className="w-full text-white hover:bg-secondary/20">
-                Sign In
-              </Button>
-              <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-background font-semibold rounded-lg">
-                Get Started
-              </Button>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button variant="ghost" className="w-full text-white hover:bg-secondary/20">
+                    Sign In
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button className="w-full bg-cyan-500 hover:bg-cyan-600 text-background font-semibold rounded-lg">
+                    Get Started
+                  </Button>
+                </SignUpButton>
+              </SignedOut>
+              <SignedIn>
+                <div className="flex justify-center py-2">
+                  <UserButton afterSignOutUrl="/" />
+                </div>
+              </SignedIn>
             </div>
           </div>
         </div>
