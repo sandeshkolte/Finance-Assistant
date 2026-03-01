@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       bankName: "Connected Bank",
       accountType: "Checking",
       balance: 0,
-      plaidAccessToken: encrypt(access_token),
+      accessToken: encrypt(access_token),
     },
   });
 

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { groupByCategory } from "@/lib/analytics";
 import { monthlySummary } from "@/lib/analytics";
@@ -9,12 +9,22 @@ import { netWorth } from "@/lib/netWorth";
 import { generateInsights } from "@/lib/insights";
 
 export async function GET() {
-  const { userId: clerkId } = await auth();
+  const clerkUser = await currentUser();
 
-  if (!clerkId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!clerkUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
+  const clerkId = clerkUser.id;
+  const email = clerkUser.emailAddresses[0]?.emailAddress ?? "no-email@example.com";
+  const name = clerkUser.firstName || clerkUser.username || "User";
+
+  const user = await prisma.user.upsert({
     where: { clerkId },
+    update: {},
+    create: {
+      clerkId,
+      email,
+      name,
+    },
     include: {
       accounts: {
         include: { transactions: true },
@@ -22,19 +32,19 @@ export async function GET() {
     },
   });
 
-  if (!user) return NextResponse.json({ error: "User not found" });
-
   const allTransactions = user.accounts.flatMap(a => a.transactions);
 
-return NextResponse.json({
-  transactions: allTransactions,
-  categoryBreakdown: groupByCategory(allTransactions),
-  monthlySummary: monthlySummary(allTransactions),
-  subscriptions: detectSubscriptions(allTransactions),
-  burn: burnRate(allTransactions),
-  netWorth: netWorth(user.accounts),
-  insights: generateInsights(allTransactions, detectSubscriptions(allTransactions)),
-});
+  return NextResponse.json({
+    hasConnectedBank: user.accounts.length > 0,
+    accounts: user.accounts, // Added raw accounts
+    transactions: allTransactions,
+    categoryBreakdown: groupByCategory(allTransactions),
+    monthlySummary: monthlySummary(allTransactions),
+    subscriptions: detectSubscriptions(allTransactions),
+    burn: burnRate(allTransactions),
+    netWorth: netWorth(user.accounts),
+    insights: generateInsights(allTransactions, detectSubscriptions(allTransactions)),
+  });
 
 }
 

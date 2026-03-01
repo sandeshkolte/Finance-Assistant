@@ -20,14 +20,14 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "User not found" });
 
   for (const account of user.accounts) {
-    if (!account.plaidAccessToken) continue;
+    if (!account.accessToken) continue;
 
     let hasMore = true;
     let cursor = account.lastSyncCursor;
 
     while (hasMore) {
       const res = await plaidClient.transactionsSync({
-        access_token: decrypt(account.plaidAccessToken),
+        access_token: decrypt(account.accessToken),
         cursor: cursor ?? undefined,
       });
 
@@ -45,7 +45,7 @@ export async function POST() {
             status: t.pending ? "pending" : "posted",
           },
           create: {
-            plaidTransactionId: t.transaction_id,
+            externalId: t.transaction_id,
             amount: t.amount,
             category: formatCategory(t),
             date: new Date(t.date),

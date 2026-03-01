@@ -11,7 +11,7 @@ export async function saveTransactions(transactions: any[], accountId: string) {
 
     if (plaidId) {
       await prisma.transaction.upsert({
-        where: { plaidTransactionId: plaidId },
+        where: { externalId: plaidId },
         update: {
           amount,
           category: formatCategory(t),
@@ -19,7 +19,7 @@ export async function saveTransactions(transactions: any[], accountId: string) {
           merchant: t.name || t.merchant,
         },
         create: {
-          plaidTransactionId: plaidId,
+          externalId: plaidId,
           amount,
           category: formatCategory(t),
           date: new Date(t.date),

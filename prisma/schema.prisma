@@ -25,11 +25,12 @@ model User {
 
 model Account {
   id                String   @id @default(uuid())
-  plaidAccountId    String?  @unique
+  provider          String   @default("plaid") // e.g., "plaid", "setu", "manual"
+  externalAccountId String?  @unique           // generic replacement for plaidAccountId
   bankName          String
   accountType       String
   balance           Decimal  @db.Decimal(19, 4)
-  plaidAccessToken  String?
+  accessToken       String?                    // generic replacement for plaidAccessToken
   lastSyncCursor    String?
   userId            String
   user              User     @relation(fields: [userId], references: [id])
@@ -39,7 +40,7 @@ model Account {
 
 model Transaction {
   id                 String   @id @default(uuid())
-  plaidTransactionId String?  @unique
+  externalId         String?  @unique          // generic replacement for plaidTransactionId
   amount             Decimal  @db.Decimal(19, 4)
   category           String
   date               DateTime

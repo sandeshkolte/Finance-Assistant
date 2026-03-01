@@ -63,6 +63,7 @@ import type {
 } from "recharts/types/component/DefaultTooltipContent";
 import { SignedIn, UserButton, useUser } from "@clerk/nextjs";
 import { UploadStatement } from "@/components/UploadStatement";
+import ConnectBank from "@/components/ConnectBank";
 
 // ─── domain types (mirror your Prisma schema) ─────────────────────────────────
 
@@ -101,6 +102,13 @@ interface BurnRate {
 
 export type InsightType = "anomaly" | "warning" | "tip" | "forecast" | "carbon" | "goal";
 
+interface Account {
+  id: string;
+  bankName: string;
+  accountType: string;
+  balance: number | string;
+}
+
 interface Insight {
   type: InsightType;
   title: string;
@@ -110,6 +118,7 @@ interface Insight {
 
 interface DashboardData {
   user: { name: string; plan?: string };
+  accounts: Account[]; // Added accounts
   transactions: Transaction[];
   categoryBreakdown: CategoryBreakdownItem[];
   monthlySummary: MonthlySummaryItem[];
@@ -117,6 +126,7 @@ interface DashboardData {
   burn: BurnRate | null;
   netWorth: number | string;
   insights: Insight[];
+  hasConnectedBank: boolean;
 }
 
 // ─── utils ────────────────────────────────────────────────────────────────────
@@ -128,8 +138,8 @@ function cn(...inputs: ClassValue[]): string {
 function fmt(n: number | string | null | undefined): string {
   const val = typeof n === "string" ? parseFloat(n) : (n ?? 0);
   return (
-    "$" +
-    Math.abs(val).toLocaleString("en-US", {
+    "₹" +
+    Math.abs(val).toLocaleString("en-IN", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })
@@ -729,13 +739,14 @@ export default function DashboardPage() {
 
   const handleSync = async (): Promise<void> => {
     setSyncing(true);
-    await fetch("/api/plaid/sync", { method: "POST" }).catch(() => { });
+    await fetch("/api/bank/sync", { method: "POST" }).catch(() => { });
     const fresh = await fetch("/api/dashboard").then(
       (r) => r.json() as Promise<DashboardData>
     );
     setData(fresh);
     setSyncing(false);
   };
+
 
   // ── loading state ─────────────────────────────────────────────────────────
   if (!data) {
@@ -792,15 +803,20 @@ export default function DashboardPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <UploadStatement onSuccess={loadData} />
-            <button
-              onClick={() => void handleSync()}
-              disabled={syncing}
-              className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black px-3.5 py-2 text-[12px] font-mono text-slate-400 transition hover:border-purple-500/40 hover:text-purple-400 disabled:opacity-50"
-            >
-              <RefreshCcw size={12} className={syncing ? "animate-spin" : ""} />
-              {syncing ? "Syncing…" : "Sync Plaid"}
-            </button>
+            {data.hasConnectedBank && (
+              <>
+                <ConnectBank />
+                <UploadStatement onSuccess={loadData} />
+                <button
+                  onClick={() => void handleSync()}
+                  disabled={syncing}
+                  className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-black px-3.5 py-2 text-[12px] font-mono text-slate-400 transition hover:border-purple-500/40 hover:text-purple-400 disabled:opacity-50"
+                >
+                  <RefreshCcw size={12} className={syncing ? "animate-spin" : ""} />
+                  {syncing ? "Syncing…" : "Sync Bank"}
+                </button>
+              </>
+            )}
 
             <SignedIn>
               <UserButton />
@@ -811,445 +827,470 @@ export default function DashboardPage() {
 
       <main className="mx-auto max-w-screen-xl px-6 py-8">
 
-        {/* ══ OVERVIEW ═══════════════════════════════════════════════════════ */}
-        {tab === "overview" && (
-          <div className="animate-fade-up">
-            <div className="mb-8">
-              <p className="text-[11px] font-mono tracking-widest uppercase text-slate-600 mb-1.5">
-                Dashboard
-              </p>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Welcome back, <span className="text-purple-400">{user?.firstName || user?.fullName || "User"}</span>
-              </h1>
+        {!data.hasConnectedBank ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-up">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-500/10 mb-6">
+              <Wallet size={32} className="text-purple-400" />
             </div>
-
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
-              <StatCard
-                label="Net Worth"
-                value={fmt(data.netWorth)}
-                sub="all accounts"
-                icon={Wallet}
-                accent="#10d9a0"
-                delay={0}
-              />
-              <StatCard
-                label="Total Spent"
-                value={fmt(totalSpent)}
-                sub={`${data.transactions.length} transactions`}
-                icon={TrendingDown}
-                accent="#f43f5e"
-                delay={0.07}
-              />
-              <StatCard
-                label="Daily Burn"
-                value={`${fmt(data.burn?.daily ?? 0)}/day`}
-                sub={`~${fmt(data.burn?.projected ?? 0)} projected`}
-                icon={Flame}
-                accent="#fb923c"
-                delay={0.14}
-              />
-              <StatCard
-                label="Subscriptions"
-                value={`${data.subscriptions?.length ?? 0} active`}
-                sub={`${fmt(
-                  data.subscriptions?.reduce((s, x) => s + (x.amount ?? 0), 0) ?? 0
-                )}/mo`}
-                icon={Repeat2}
-                accent="#a78bfa"
-                delay={0.21}
-              />
+            <h1 className="text-3xl font-bold tracking-tight mb-3">
+              Connect your finances
+            </h1>
+            <p className="max-w-md text-slate-400 mb-8 leading-relaxed">
+              Link your Indian bank account securely through the Account Aggregator network or upload a bank statement to unlock powerful AI insights and start tracking your spending.
+            </p>
+            <div className="flex flex-col  items-center gap-4">
+              <ConnectBank />
+              <div className="text-slate-500 text-sm font-mono px-2">OR</div>
+              <UploadStatement onSuccess={loadData} />
             </div>
-
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-6">
-              <Card>
-                <CardHeader>
-                  <p className="text-sm font-semibold text-slate-300 py-1">
-                    Spending by Category
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={categoryBreakdown}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        innerRadius={44}
-                        paddingAngle={3}
-                      >
-                        {categoryBreakdown?.map((_, i) => (
-                          <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<ChartTip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
-                    {categoryBreakdown?.map((c, i) => (
-                      <span
-                        key={i}
-                        className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500"
-                      >
-                        <span
-                          className="inline-block h-2 w-2 rounded-full"
-                          style={{ background: PALETTE[i % PALETTE.length] }}
-                        />
-                        {fcat(c.name)}
-                      </span>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <p className="text-sm font-semibold text-slate-300 py-1">
-                    Monthly Spending
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <AreaChart data={data.monthlySummary}>
-                      <defs>
-                        <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10d9a0" stopOpacity={0.22} />
-                          <stop offset="95%" stopColor="#10d9a0" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="rgba(255,255,255,0.04)"
-                      />
-                      <XAxis
-                        dataKey="month"
-                        tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(v: number) => `$${v}`}
-                      />
-                      <Tooltip content={<ChartTip />} />
-                      <Area
-                        type="monotone"
-                        dataKey="expense"
-                        stroke="#ef4444"
-                        fill="#ef444420"
-                      />
-
-                      <Area
-                        type="monotone"
-                        dataKey="income"
-                        stroke="#10d9a0"
-                        fill="#10d9a020"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-
-            {data.burn && (
-              <Card>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Flame size={15} className="text-amber-400" />
-                      <span className="text-sm font-semibold text-slate-200">
-                        Burn Rate — Month Progress
-                      </span>
-                    </div>
-                    <Badge color="#fb923c">
-                      {fmt(data.burn.projected)} projected
-                    </Badge>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.05]">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          ((data.burn.spent ?? 0) / (data.burn.projected ?? 1)) * 100
-                        )}%`,
-                        background: "linear-gradient(90deg,#10d9a0,#fb923c)",
-                      }}
-                    />
-                  </div>
-                  <div className="mt-3 flex justify-between text-[11px] font-mono text-slate-600">
-                    <span>Spent: {fmt(data.burn.spent)}</span>
-                    <span>Daily avg: {fmt(data.burn.daily)}</span>
-                    <span>Projected: {fmt(data.burn.projected)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
-        )}
-
-        {/* ══ TRANSACTIONS ═══════════════════════════════════════════════════ */}
-        {tab === "transactions" && (
-          <div className="animate-fade-up">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-              <h2 className="text-[22px] font-bold tracking-tight">
-                Transactions{" "}
-                <span className="text-sm font-mono font-normal text-slate-600">
-                  ({filtered.length})
-                </span>
-              </h2>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search
-                    size={13}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
-                  />
-                  <input
-                    value={search}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setSearch(e.target.value)
-                    }
-                    placeholder="Search merchant…"
-                    className="h-9 w-52 rounded-xl border border-white/[0.08] bg-black pl-8 pr-3 text-[12px] font-mono text-slate-300 placeholder-slate-600 outline-none transition focus:border--500/40"
-                  />
-                  {search && (
-                    <button
-                      onClick={() => setSearch("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400"
-                    >
-                      <X size={11} />
-                    </button>
-                  )}
+        ) : (
+          <>
+            {/* ══ OVERVIEW ═══════════════════════════════════════════════════════ */}
+            {tab === "overview" && (
+              <div className="animate-fade-up">
+                <div className="mb-8">
+                  <p className="text-[11px] font-mono tracking-widest uppercase text-slate-600 mb-1.5">
+                    Dashboard
+                  </p>
+                  <h1 className="text-3xl font-bold tracking-tight">
+                    Welcome back, <span className="text-purple-400">{user?.firstName || user?.fullName || "User"}</span>
+                  </h1>
                 </div>
-                {(["date", "amount"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSort(s)}
-                    className={cn(
-                      "rounded-lg border px-3.5 py-1.5 text-[12px] font-mono transition",
-                      sort === s
-                        ? "border-purple-500/50 bg-purple-500/10 text-purple-400"
-                        : "border-white/[0.08] text-slate-500 hover:border-purple-500/30 hover:text-purple-400"
-                    )}
-                  >
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
 
-            <Card>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-white/[0.07]">
-                    {["Merchant", "Category", "Date", "Amount"].map((h) => (
-                      <th
-                        key={h}
-                        className="px-5 py-3.5 text-left text-[10px] font-mono tracking-widest uppercase text-slate-600"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginated.map((t) => (
-                    <tr
-                      key={t.id}
-                      className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.025]"
-                    >
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-lg">{catIcon(t.category)}</span>
-                          <span className="text-sm font-semibold text-slate-200">
-                            {t.merchant}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <Badge color={catColor(t.category)}>
-                          {fcat(t.category)}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3.5 font-mono text-[12px] text-slate-500">
-                        {new Date(t.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="px-5 py-3.5 font-mono text-sm font-bold text-slate-200">
-                        −{fmt(t.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                  {!paginated.length && (
-                    <tr>
-                      <td
-                        colSpan={4}
-                        className="py-10 text-center font-mono text-sm text-slate-600"
-                      >
-                        No transactions match your search.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </Card>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-6">
+                  <StatCard
+                    label="Bank Balance"
+                    value={fmt(data.netWorth)}
+                    sub={`${data.accounts?.length || 0} account(s)`}
+                    icon={Wallet}
+                    accent="#10d9a0"
+                    delay={0}
+                  />
+                  <StatCard
+                    label="Total Spent"
+                    value={fmt(totalSpent)}
+                    sub={`${data.transactions.length} transactions`}
+                    icon={TrendingDown}
+                    accent="#f43f5e"
+                    delay={0.07}
+                  />
+                  <StatCard
+                    label="Daily Burn"
+                    value={`${fmt(data.burn?.daily ?? 0)}/day`}
+                    sub={`~${fmt(data.burn?.projected ?? 0)} projected`}
+                    icon={Flame}
+                    accent="#fb923c"
+                    delay={0.14}
+                  />
+                  <StatCard
+                    label="Subscriptions"
+                    value={`${data.subscriptions?.length ?? 0} active`}
+                    sub={`${fmt(
+                      data.subscriptions?.reduce((s, x) => s + (x.amount ?? 0), 0) ?? 0
+                    )}/mo`}
+                    icon={Repeat2}
+                    accent="#a78bfa"
+                    delay={0.21}
+                  />
+                </div>
 
-            <div className="mt-4 flex items-center justify-between">
-              <span className="font-mono text-[12px] text-slate-600">
-                Page {page} of {totalPages || 1} · {sorted.length} results
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setPage((p) => p - 1)}
-                  disabled={page === 1}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] text-slate-500 transition hover:border-purple-500/40 hover:text-purple-400 disabled:opacity-25"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const p =
-                    Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={cn(
-                        "flex h-8 w-8 items-center justify-center rounded-lg border text-[12px] font-mono transition",
-                        p === page
-                          ? "border-purple-500/50 bg-purple-500/10 text-purple-400"
-                          : "border-white/[0.08] text-slate-500 hover:border-purple-500/30 hover:text-purple-400"
-                      )}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= totalPages}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] text-slate-500 transition hover:border-purple-500/40 hover:text-purple-400 disabled:opacity-25"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* ══ ANALYTICS ══════════════════════════════════════════════════════ */}
-        {tab === "analytics" && (
-          <div className="animate-fade-up">
-            <h2 className="mb-6 text-[22px] font-bold tracking-tight">Analytics</h2>
-
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 mb-6">
-              {categoryBreakdown.map((c, i) => {
-                const pct = Math.round((c.value / totalSpent) * 100);
-                return (
-                  <Card key={i}>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 mb-6">
+                  <Card>
+                    <CardHeader>
+                      <p className="text-sm font-semibold text-slate-300 py-1">
+                        Spending by Category
+                      </p>
+                    </CardHeader>
                     <CardContent>
-                      <div className="flex justify-between items-start mb-3">
-                        <span className="text-2xl">{catIcon(c.name)}</span>
-                        <span className="font-mono text-[11px] text-slate-600">
-                          {pct}%
-                        </span>
-                      </div>
-                      <p className="text-[13px] font-semibold text-slate-300 mb-1">
-                        {fcat(c.name)}
-                      </p>
-                      <p
-                        className="font-mono text-xl font-bold mb-3"
-                        style={{ color: PALETTE[i % PALETTE.length] }}
-                      >
-                        {fmt(c.value)}
-                      </p>
-                      <div className="h-1.5 w-full rounded-full bg-white/[0.05]">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${pct}%`,
-                            background: PALETTE[i % PALETTE.length],
-                          }}
-                        />
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={categoryBreakdown}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            innerRadius={44}
+                            paddingAngle={3}
+                          >
+                            {categoryBreakdown?.map((_, i) => (
+                              <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<ChartTip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
+                        {categoryBreakdown?.map((c, i) => (
+                          <span
+                            key={i}
+                            className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500"
+                          >
+                            <span
+                              className="inline-block h-2 w-2 rounded-full"
+                              style={{ background: PALETTE[i % PALETTE.length] }}
+                            />
+                            {fcat(c.name)}
+                          </span>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
 
-            <Card className="mb-6">
-              <CardHeader>
-                <p className="text-sm font-semibold text-slate-300 py-1">
-                  Full Category Breakdown
-                </p>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart
-                    data={categoryBreakdown.map((c) => ({
-                      ...c,
-                      name: fcat(c.name),
-                    }))}
-                    barSize={28}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="rgba(255,255,255,0.04)"
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
-                      axisLine={false}
-                      tickLine={false}
-                      tickFormatter={(v: number) => `$${v}`}
-                    />
-                    <Tooltip content={<ChartTip />} />
-                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                      {categoryBreakdown.map((_, i) => (
-                        <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                  <Card>
+                    <CardHeader>
+                      <p className="text-sm font-semibold text-slate-300 py-1">
+                        Monthly Spending
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={data.monthlySummary}>
+                          <defs>
+                            <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10d9a0" stopOpacity={0.22} />
+                              <stop offset="95%" stopColor="#10d9a0" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="rgba(255,255,255,0.04)"
+                          />
+                          <XAxis
+                            dataKey="month"
+                            tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
+                            axisLine={false}
+                            tickLine={false}
+                            tickFormatter={(v: number) => `₹${v}`}
+                          />
+                          <Tooltip content={<ChartTip />} />
+                          <Area
+                            type="monotone"
+                            dataKey="expense"
+                            stroke="#ef4444"
+                            fill="#ef444420"
+                          />
+
+                          <Area
+                            type="monotone"
+                            dataKey="income"
+                            stroke="#10d9a0"
+                            fill="#10d9a020"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {data.burn && (
+                  <Card>
+                    <CardContent>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Flame size={15} className="text-amber-400" />
+                          <span className="text-sm font-semibold text-slate-200">
+                            Burn Rate — Month Progress
+                          </span>
+                        </div>
+                        <Badge color="#fb923c">
+                          {fmt(data.burn.projected)} projected
+                        </Badge>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.05]">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              ((data.burn.spent ?? 0) / (data.burn.projected ?? 1)) * 100
+                            )}%`,
+                            background: "linear-gradient(90deg,#10d9a0,#fb923c)",
+                          }}
+                        />
+                      </div>
+                      <div className="mt-3 flex justify-between text-[11px] font-mono text-slate-600">
+                        <span>Spent: {fmt(data.burn.spent)}</span>
+                        <span>Daily avg: {fmt(data.burn.daily)}</span>
+                        <span>Projected: {fmt(data.burn.projected)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* ══ TRANSACTIONS ═══════════════════════════════════════════════════ */}
+            {tab === "transactions" && (
+              <div className="animate-fade-up">
+                <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                  <h2 className="text-[22px] font-bold tracking-tight">
+                    Transactions{" "}
+                    <span className="text-sm font-mono font-normal text-slate-600">
+                      ({filtered.length})
+                    </span>
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search
+                        size={13}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
+                      />
+                      <input
+                        value={search}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setSearch(e.target.value)
+                        }
+                        placeholder="Search merchant…"
+                        className="h-9 w-52 rounded-xl border border-white/[0.08] bg-black pl-8 pr-3 text-[12px] font-mono text-slate-300 placeholder-slate-600 outline-none transition focus:border--500/40"
+                      />
+                      {search && (
+                        <button
+                          onClick={() => setSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400"
+                        >
+                          <X size={11} />
+                        </button>
+                      )}
+                    </div>
+                    {(["date", "amount"] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setSort(s)}
+                        className={cn(
+                          "rounded-lg border px-3.5 py-1.5 text-[12px] font-mono transition",
+                          sort === s
+                            ? "border-purple-500/50 bg-purple-500/10 text-purple-400"
+                            : "border-white/[0.08] text-slate-500 hover:border-purple-500/30 hover:text-purple-400"
+                        )}
+                      >
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Card>
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/[0.07]">
+                        {["Merchant", "Category", "Date", "Amount"].map((h) => (
+                          <th
+                            key={h}
+                            className="px-5 py-3.5 text-left text-[10px] font-mono tracking-widest uppercase text-slate-600"
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginated.map((t) => (
+                        <tr
+                          key={t.id}
+                          className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.025]"
+                        >
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-lg">{catIcon(t.category)}</span>
+                              <span className="text-sm font-semibold text-slate-200">
+                                {t.merchant}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3.5">
+                            <Badge color={catColor(t.category)}>
+                              {fcat(t.category)}
+                            </Badge>
+                          </td>
+                          <td className="px-5 py-3.5 font-mono text-[12px] text-slate-500">
+                            {new Date(t.date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </td>
+                          <td className={cn(
+                            "px-5 py-3.5 font-mono text-sm font-bold",
+                            Number(t.amount) > 0 ? "text-emerald-500" : "text-rose-500"
+                          )}>
+                            {Number(t.amount) > 0 ? "+" : "−"}{fmt(t.amount)}
+                          </td>
+                        </tr>
                       ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+                      {!paginated.length && (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="py-10 text-center font-mono text-sm text-slate-600"
+                          >
+                            No transactions match your search.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </Card>
 
-            <SubscriptionsPanel subscriptions={data.subscriptions} />
-          </div>
-        )}
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="font-mono text-[12px] text-slate-600">
+                    Page {page} of {totalPages || 1} · {sorted.length} results
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setPage((p) => p - 1)}
+                      disabled={page === 1}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] text-slate-500 transition hover:border-purple-500/40 hover:text-purple-400 disabled:opacity-25"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const p =
+                        Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-lg border text-[12px] font-mono transition",
+                            p === page
+                              ? "border-purple-500/50 bg-purple-500/10 text-purple-400"
+                              : "border-white/[0.08] text-slate-500 hover:border-purple-500/30 hover:text-purple-400"
+                          )}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={page >= totalPages}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] text-slate-500 transition hover:border-purple-500/40 hover:text-purple-400 disabled:opacity-25"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
-        {/* ══ INSIGHTS ═══════════════════════════════════════════════════════ */}
-        {tab === "insights" && (
-          <div className="animate-fade-up">
-            <div className="mb-6">
-              <h2 className="text-[22px] font-bold tracking-tight">
-                AI Insights{" "}
-                <span className="text-purple-400">✦</span>
-              </h2>
-              <p className="mt-1 font-mono text-[12px] text-slate-600">
-                Gemini analyses your real Plaid transaction data in real-time
-              </p>
-            </div>
-            <AIInsightsPanel
-              transactions={data.transactions}
-              categoryBreakdown={categoryBreakdown}
-              burn={data.burn}
-              subscriptions={data.subscriptions}
-            />
-          </div>
+            {/* ══ ANALYTICS ══════════════════════════════════════════════════════ */}
+            {tab === "analytics" && (
+              <div className="animate-fade-up">
+                <h2 className="mb-6 text-[22px] font-bold tracking-tight">Analytics</h2>
+
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 mb-6">
+                  {categoryBreakdown.map((c, i) => {
+                    const pct = Math.round((c.value / totalSpent) * 100);
+                    return (
+                      <Card key={i}>
+                        <CardContent>
+                          <div className="flex justify-between items-start mb-3">
+                            <span className="text-2xl">{catIcon(c.name)}</span>
+                            <span className="font-mono text-[11px] text-slate-600">
+                              {pct}%
+                            </span>
+                          </div>
+                          <p className="text-[13px] font-semibold text-slate-300 mb-1">
+                            {fcat(c.name)}
+                          </p>
+                          <p
+                            className="font-mono text-xl font-bold mb-3"
+                            style={{ color: PALETTE[i % PALETTE.length] }}
+                          >
+                            {fmt(c.value)}
+                          </p>
+                          <div className="h-1.5 w-full rounded-full bg-white/[0.05]">
+                            <div
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{
+                                width: `${pct}%`,
+                                background: PALETTE[i % PALETTE.length],
+                              }}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                <Card className="mb-6">
+                  <CardHeader>
+                    <p className="text-sm font-semibold text-slate-300 py-1">
+                      Full Category Breakdown
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart
+                        data={categoryBreakdown.map((c) => ({
+                          ...c,
+                          name: fcat(c.name),
+                        }))}
+                        barSize={28}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="rgba(255,255,255,0.04)"
+                        />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fill: "#4a5568", fontSize: 11, fontFamily: "monospace" }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(v: number) => `$${v}`}
+                        />
+                        <Tooltip content={<ChartTip />} />
+                        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                          {categoryBreakdown.map((_, i) => (
+                            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <SubscriptionsPanel subscriptions={data.subscriptions} />
+              </div>
+            )}
+
+            {/* ══ INSIGHTS ═══════════════════════════════════════════════════════ */}
+            {tab === "insights" && (
+              <div className="animate-fade-up">
+                <div className="mb-6">
+                  <h2 className="text-[22px] font-bold tracking-tight">
+                    AI Insights{" "}
+                    <span className="text-purple-400">✦</span>
+                  </h2>
+                  <p className="mt-1 font-mono text-[12px] text-slate-600">
+                    Claude analyses your real bank transaction data in real-time
+                  </p>
+                </div>
+                <AIInsightsPanel
+                  transactions={data.transactions}
+                  categoryBreakdown={categoryBreakdown}
+                  burn={data.burn}
+                  subscriptions={data.subscriptions}
+                />
+              </div>
+            )}
+
+          </>
         )}
 
       </main>
