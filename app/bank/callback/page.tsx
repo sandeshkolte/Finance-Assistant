@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 
-export default function SetuCallbackPage() {
+function SetuCallbackInner() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -101,5 +101,18 @@ export default function SetuCallbackPage() {
                 Powered by Setu AA & Secure-SaaS
             </p>
         </div>
+    );
+}
+
+export default function SetuCallbackPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0b] text-white p-6 text-center">
+                <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+                <p className="text-gray-400 font-mono text-sm">Initializing callback session...</p>
+            </div>
+        }>
+            <SetuCallbackInner />
+        </Suspense>
     );
 }
