@@ -19,7 +19,7 @@ export function SecuritySection() {
         {
             icon: <ShieldCheck className="w-6 h-6 text-cyan-400" />,
             title: "Trusted by Millions",
-            description: "We partner with Plaid to securely connect your accounts. We never see or store your bank login credentials.",
+            description: "We partner with Setu to securely connect your accounts. We never see or store your bank login credentials.",
         },
         {
             icon: <EyeOff className="w-6 h-6 text-cyan-400" />,

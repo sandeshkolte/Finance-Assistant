@@ -21,11 +21,9 @@
     "next": "16.1.6",
     "pdf-lib": "^1.17.1",
     "pg": "^8.18.0",
-    "plaid": "^41.3.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-plaid-link": "^4.1.1",
     "recharts": "^3.7.0",
     "svix": "^1.85.0",
     "tailwind-merge": "^3.5.0"

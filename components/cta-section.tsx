@@ -82,11 +82,10 @@ export function CTASection() {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`relative group overflow-hidden rounded-xl transition-all duration-300 ${
-                plan.highlighted
+              className={`relative group overflow-hidden rounded-xl transition-all duration-300 ${plan.highlighted
                   ? 'md:scale-105 border-2 border-cyan-500/50'
                   : 'border border-secondary'
-              }`}
+                }`}
             >
               {/* Hover effect */}
               <div className="absolute inset-0 -z-10 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -107,11 +106,10 @@ export function CTASection() {
                 </div>
 
                 <Button
-                  className={`w-full mb-8 rounded-lg font-semibold transition-all group/btn ${
-                    plan.highlighted
+                  className={`w-full mb-8 rounded-lg font-semibold transition-all group/btn ${plan.highlighted
                       ? 'bg-cyan-500 hover:bg-cyan-600 text-background'
                       : 'bg-secondary/50 hover:bg-secondary text-white border border-secondary'
-                  }`}
+                    }`}
                 >
                   {plan.cta}
                   <ArrowRight className="ml-2 w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
@@ -137,7 +135,7 @@ export function CTASection() {
             {[
               {
                 q: 'Is my bank information secure?',
-                a: 'Yes. We use industry-standard encryption and never store your banking credentials. We use Plaid, the same technology banks use.',
+                a: 'Yes. We use industry-standard encryption and never store your banking credentials. We use Setu, the same technology banks use.',
               },
               {
                 q: 'Can I cancel anytime?',

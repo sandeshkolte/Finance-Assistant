@@ -165,8 +165,8 @@ function normaliseCat(s: string | null | undefined): string {
     .replace(/^_|_$/g, "");    // trim leading/trailing underscores
 }
 
-// Plaid primary category → display label
-const PLAID_CAT_MAP: Record<string, string> = {
+// Primary category → display label
+const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   food_drink: "Food & Drink",
   food: "Food & Drink",
   restaurants: "Food & Drink",
@@ -237,7 +237,7 @@ function catIcon(cat: string | null | undefined): string {
 function fcat(cat: string | null | undefined): string {
   const key = normaliseCat(cat);
   return (
-    PLAID_CAT_MAP[key] ??
+    CATEGORY_DISPLAY_MAP[key] ??
     // fallback: prettify whatever string we got
     (cat ?? "Other")
       .replace(/_/g, " ")

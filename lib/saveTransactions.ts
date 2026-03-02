@@ -6,12 +6,12 @@ export async function saveTransactions(transactions: any[], accountId: string) {
   for (const t of transactions) {
     const amount = new Prisma.Decimal(t.amount);
 
-    // For manual imports, we might not have a plaidTransactionId
-    const plaidId = t.transaction_id || t.plaidTransactionId || null;
+    // For manual imports, we might not have an external ID
+    const externalId = t.transaction_id || null;
 
-    if (plaidId) {
+    if (externalId) {
       await prisma.transaction.upsert({
-        where: { externalId: plaidId },
+        where: { externalId: externalId },
         update: {
           amount,
           category: formatCategory(t),
@@ -19,7 +19,7 @@ export async function saveTransactions(transactions: any[], accountId: string) {
           merchant: t.name || t.merchant,
         },
         create: {
-          externalId: plaidId,
+          externalId: externalId,
           amount,
           category: formatCategory(t),
           date: new Date(t.date),

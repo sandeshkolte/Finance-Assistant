@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { currentUser } from "@clerk/nextjs/server";
 import { fetchTransactionsSync } from "@/lib/bank-fetch";
 import { saveTransactions } from "@/lib/saveTransactions";
-import { decrypt } from "@/lib/encryption";
+// import { decrypt } from "@/lib/encryption";
+
 
 export async function POST() {
     const clerkUser = await currentUser();
@@ -25,13 +26,12 @@ export async function POST() {
         if (!account.accessToken) continue;
 
         try {
-            const decryptedToken = account.provider === "plaid"
-                ? decrypt(account.accessToken)
-                : account.accessToken;
+            const token = account.accessToken;
+            if (!token) continue;
 
             const { added, nextCursor } = await fetchTransactionsSync(
                 account.provider,
-                decryptedToken,
+                token,
                 account.lastSyncCursor ?? undefined
             );
 

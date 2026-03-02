@@ -1,16 +1,13 @@
 /**
  * lib/analytics.ts
  *
- * Plaid sign convention:
- *   - Positive amount  = money OUT (expense/debit)
- *   - Negative amount  = money IN  (income/credit)
- *
- * This is the opposite of what you might expect — Plaid docs confirm this.
+ * Standard Transaction Sign Convention:
+ *   - Positive amount = money OUT (expense/debit)
+ *   - Negative amount = money IN  (income/credit)
  */
 
-// ─── Plaid primary category → clean display name ──────────────────────────────
-
-const PLAID_CATEGORY_MAP: Record<string, string> = {
+// ─── Category → clean display name ──────────────────────────────
+const CATEGORY_MAPPING: Record<string, string> = {
   // Food
   "food and drink": "Food & Drink",
   "restaurants": "Food & Drink",
@@ -93,7 +90,7 @@ const PLAID_CATEGORY_MAP: Record<string, string> = {
 
 export function formatCategory(transaction: { category?: string }): string {
   const raw = (transaction.category ?? "other").toLowerCase().trim();
-  return PLAID_CATEGORY_MAP[raw] ?? capitalise(transaction.category ?? "Other");
+  return CATEGORY_MAPPING[raw] ?? capitalise(transaction.category ?? "Other");
 }
 
 function capitalise(s: string): string {
@@ -132,7 +129,7 @@ export function monthlySummary(transactions: any[]) {
     if (!map[month]) map[month] = { income: 0, expense: 0 };
 
     const amount = Number(t.amount);
-    // Plaid: positive = expense (debit), negative = income (credit)
+    // Standard convention: positive = expense (debit), negative = income (credit)
     if (amount > 0) {
       map[month].expense += amount;
     } else {

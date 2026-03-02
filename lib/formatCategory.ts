@@ -3,7 +3,7 @@ export function formatCategory(t: any): string {
   if (typeof t.category === "string") return t.category;
   if (Array.isArray(t.category) && t.category.length > 0) return t.category[0];
 
-  // 2. Check for Plaid-specific personal finance categories
+  // 2. Check for schema-specific personal finance categories (e.g., Plaid/generic)
   if (t.personal_finance_category?.primary) {
     return t.personal_finance_category.primary
       .replaceAll("_", " ")

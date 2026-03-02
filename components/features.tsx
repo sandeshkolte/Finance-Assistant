@@ -7,7 +7,7 @@ const features = [
   {
     icon: Zap,
     title: 'Instant Connection',
-    description: 'Connect any bank or credit card in seconds with Plaid. Your data stays encrypted and private.',
+    description: 'Connect your Indian bank accounts in seconds with Setu via the Account Aggregator network.',
     color: 'from-cyan-400 to-cyan-500',
   },
   {
@@ -78,9 +78,8 @@ export function Features() {
             return (
               <div
                 key={index}
-                className={`group relative overflow-hidden rounded-xl p-6 border border-secondary bg-secondary/20 hover:bg-secondary/40 transition-all duration-300 ${
-                  isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-                }`}
+                className={`group relative overflow-hidden rounded-xl p-6 border border-secondary bg-secondary/20 hover:bg-secondary/40 transition-all duration-300 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                  }`}
               >
                 {/* Hover gradient */}
                 <div className="absolute inset-0 -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-cyan-500/10 to-transparent"></div>
