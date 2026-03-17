@@ -33,6 +33,8 @@ export async function POST() {
             id: consentRequest.id
         });
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const detail = error.response?.data ?? error.message;
+        console.error("Create consent error:", detail);
+        return NextResponse.json({ error: detail }, { status: 500 });
     }
 }
