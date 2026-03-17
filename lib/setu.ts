@@ -46,7 +46,10 @@ export const setuClient = {
                         },
                         refUri: "https://api.rebit.org.in/aa/purpose/101.xml"
                     },
-                    redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/bank/callback`,
+                    redirectUrl: `${
+                        process.env.NEXT_PUBLIC_APP_URL ||
+                        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+                    }/bank/callback`,
                     context: [
                         { key: "accounttype", value: "SAVINGS" },
                         { key: "purposeCode", value: "101" }
